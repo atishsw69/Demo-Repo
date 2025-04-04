@@ -1,0 +1,57 @@
+public with sharing class DatatableController {
+    
+    @AuraEnabled(cacheable=true)
+    public static List<sObject> getRecords(String objectApiName, List<String> fieldApiNames, Integer pageNumber, Integer pageSize, String searchKey, String filterField, String filterValue, String sortBy, String sortDirection) {
+        try {
+            String fields = String.join(fieldApiNames, ',');
+            String query = 'SELECT ' + fields + ' FROM ' + objectApiName;
+            
+            // Search condition
+            if (searchKey != null && searchKey != '') {
+                query += ' WHERE Name LIKE \'%' + searchKey + '%\'';
+            }
+
+            // Filter condition
+            if (filterField != null && filterValue != null) {
+                query += (searchKey != null ? ' AND ' : ' WHERE ') + filterField + ' = \'' + filterValue + '\'';
+            }
+
+            // Sorting
+            if (sortBy != null && sortDirection != null) {
+                query += ' ORDER BY ' + sortBy + ' ' + sortDirection;
+            }
+
+            // Pagination
+            Integer offsetVal = (pageNumber - 1) * pageSize;
+            query += ' LIMIT ' + pageSize + ' OFFSET ' + offsetVal;
+
+            return Database.query(query);
+        } catch (Exception e) {
+            throw new AuraHandledException(e.getMessage());
+        }
+    }
+
+    @AuraEnabled
+    public static void updateRecords(List<sObject> records) {
+        try {
+            update records;
+        } catch (DMLException e) {
+            throw new AuraHandledException(e.getMessage());
+        }
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static Map<String, String> getPicklistValues(String objectApiName, String fieldApiName) {
+        Map<String, String> picklistOptions = new Map<String, String>();
+        try {
+            Schema.DescribeSObjectResult objDescribe = Schema.getGlobalDescribe().get(objectApiName).getDescribe();
+            Schema.DescribeFieldResult fieldDescribe = objDescribe.fields.getMap().get(fieldApiName).getDescribe();
+            for (Schema.PicklistEntry entry : fieldDescribe.getPicklistValues()) {
+                picklistOptions.put(entry.getValue(), entry.getLabel());
+            }
+        } catch (Exception e) {
+            throw new AuraHandledException(e.getMessage());
+        }
+        return picklistOptions;
+    }
+}
